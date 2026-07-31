@@ -55,7 +55,7 @@ resource "aws_security_group" "sre_sg" {
 # Ubuntu EC2 인스턴스 생성
 resource "aws_instance" "sre_server" {
   ami           = "ami-0ed11f3863410c386" # Ubuntu 22.04 LTS (서울 리전 기준)
-  instance_type = "t2.micro"             # AWS Free Tier 적용 가능
+  instance_type = "t3.micro"             # AWS Free Tier 적용 가능
 
   security_groups = [aws_security_group.sre_sg.name]
 
