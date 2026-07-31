@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s # 5초마다 메트릭을 수집함
+
+scrape_configs:
+  - job_name: 'flask-web-app'
+    static_configs:
+      - targets: ['web:5000']
