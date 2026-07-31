@@ -13,7 +13,7 @@ provider "aws" {
 
 # 보안 그룹 설정
 resource "aws_security_group" "sre_sg" {
-  name        = "sre-project-sg-v3"
+  name        = "sre-project-sg-v4"
   description = "Allow HTTP, SSH and SRE ports"
 
   ingress {
@@ -76,7 +76,7 @@ resource "aws_instance" "sre_server" {
               EOF
 
   tags = {
-    Name = "SRE-Monitoring-Server"
+    Name = "SRE-monitoring-Server"
   }
 }
 
