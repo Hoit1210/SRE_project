@@ -8,40 +8,40 @@ terraform {
 }
 
 provider "aws" {
-  region = "ap-northeast-2" # 서울 리전
+  region = "ap-northeast-2"
 }
 
-# 보안 그룹 설정 (웹, Grafana, Prometheus 포트 오픈)
+# 보안 그룹 설정
 resource "aws_security_group" "sre_sg" {
-  name        = "sre-project-sg-v2"
-  description = "Allow HTTP and SRE ports"
+  name        = "sre-project-sg-v3"
+  description = "Allow HTTP, SSH and SRE ports"
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # SSH 접속
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
     from_port   = 5000
     to_port     = 5000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Web App
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Grafana
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
     from_port   = 9090
     to_port     = 9090
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Prometheus
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -52,14 +52,15 @@ resource "aws_security_group" "sre_sg" {
   }
 }
 
-# Ubuntu EC2 인스턴스 생성
+# EC2 인스턴스 생성
 resource "aws_instance" "sre_server" {
-  ami           = "ami-0ed11f3863410c386" # Ubuntu 22.04 LTS (서울 리전 기준)
-  instance_type = "t3.micro"             # AWS Free Tier 적용 가능
+  ami                         = "ami-0ed11f3863410c386" # Ubuntu 22.04 LTS
+  instance_type               = "t3.micro"
+  associate_public_ip_address = true                    # 👈 퍼블릭 IP 강제 할당
 
-  security_groups = [aws_security_group.sre_sg.name]
+  vpc_security_group_ids = [aws_security_group.sre_sg.id]
 
-  # EC2 시작 시 Docker 및 Docker Compose 자동 설치
+  # 초기 부팅 시 Docker 설치 및 프로젝트 자동 실행 (user_data 개선)
   user_data = <<-EOF
               #!/bin/bash
               apt-get update
@@ -67,6 +68,11 @@ resource "aws_instance" "sre_server" {
               systemctl start docker
               systemctl enable docker
               usermod -aG docker ubuntu
+
+              cd /home/ubuntu
+              git clone https://github.com/Hoit1210/SRE_project.git
+              cd SRE_project
+              docker-compose up -d --build
               EOF
 
   tags = {
