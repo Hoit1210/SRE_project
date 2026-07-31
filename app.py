@@ -1,11 +1,10 @@
 from flask import Flask, Response
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
-import time
 
 app = Flask(__name__)
 
-# Prometheus 메트릭 정의 (총 요청 횟수 카운터)
 REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP Requests')
+is_healthy = True # 서버 상태 플래그
 
 @app.route('/')
 def home():
@@ -14,12 +13,20 @@ def home():
 
 @app.route('/health')
 def health():
-    # 헬스 체크용 엔드포인트
+    if not is_healthy:
+        # 장애 발생 시 500 에러를 리턴하여 Auto-Healer가 감지하게 만듦
+        return "Internal Server Error", 500
     return "OK", 200
+
+# 💣 장애 주입 전용 엔드포인트!
+@app.route('/kill')
+def kill():
+    global is_healthy
+    is_healthy = False
+    return "⚠️ Web App Status Set to Down! Auto-Healer will recover this soon...", 500
 
 @app.route('/metrics')
 def metrics():
-    # Prometheus가 이 URL을 계속 조회해서 데이터를 가져감
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 if __name__ == '__main__':
