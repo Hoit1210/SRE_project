@@ -13,7 +13,7 @@ provider "aws" {
 
 # 보안 그룹 설정
 resource "aws_security_group" "sre_sg" {
-  name        = "sre-project-sg-v4"
+  name        = "sre-project-sg-v5"
   description = "Allow HTTP, SSH and SRE ports"
 
   ingress {
