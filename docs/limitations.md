@@ -1,103 +1,31 @@
-# Limitations and Security Notes
+# 현재 구현 범위와 보완할 점
 
-This repository is a portfolio prototype for infrastructure deployment automation and container-level recovery. It should not be interpreted as a production-ready self-healing platform.
+이 프로젝트는 AWS 인프라 배포 자동화와 단일 EC2 내부 컨테이너 복구를 실습한 결과물입니다.
 
-## 1. AWS authentication
+## AWS 인증
 
-The current GitHub Actions workflow authenticates with:
+GitHub Actions에서는 Repository Secrets에 저장된 장기 IAM Access Key를 사용합니다. 코드에 키를 직접 넣지는 않았지만 장기 자격 증명에 의존합니다. 개선 시에는 GitHub OIDC와 IAM Role을 사용할 계획입니다.
 
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+## IAM 권한
 
-stored as GitHub Repository Secrets.
+초기 프로비저닝 편의를 위해 권한이 넓게 설정된 적이 있습니다. 실제 배포에 활용하려면 Terraform에서 사용하는 리소스와 작업을 기준으로 권한을 좁혀야 합니다.
 
-This avoids committing credentials to source code, but it still relies on long-lived IAM credentials.
+## 네트워크 접근
 
-A stronger production pattern would be:
+현재 `main.tf`는 22, 5000, 3000, 9090 포트를 `0.0.0.0/0`에 허용합니다. 테스트 목적의 설정으로, 공용 배포에 적합하지 않습니다. SSH와 Grafana·Prometheus 접근은 신뢰할 수 있는 출발지로 제한해야 합니다.
 
-```text
-GitHub Actions
-    ↓
-OIDC
-    ↓
-IAM Role
-    ↓
-Temporary Credentials
-```
+## Docker Socket
 
-## 2. IAM permission scope
+Auto-Healer가 호스트의 `/var/run/docker.sock`에 접근합니다. 컨테이너에서 호스트 Docker를 제어할 수 있으므로 보안상 민감한 설정입니다.
 
-The original prototype used broad AWS permissions to simplify initial provisioning. Production use should restrict the IAM policy to only the resources and actions Terraform actually requires.
+또한 현재 `docker-compose.yml`의 Healer 이미지는 `python:3.9-slim`으로, `healer.py`가 사용하는 Docker CLI의 설치 과정이 보이지 않습니다. 노션의 복구 성공 기록과 동일하게 재현되는지 재검증이 필요합니다.
 
-## 3. Security Group exposure
+## 장애 복구 범위
 
-The current Terraform configuration allows inbound access from `0.0.0.0/0` to:
+정상 상태를 확인하는 `/health`와 비정상 응답 시 컨테이너를 재시작하는 방식입니다. EC2, AZ, 네트워크 자체의 장애는 처리하지 못합니다. 애플리케이션 코드 오류처럼 재시작만으로 해결할 수 없는 장애에도 한계가 있습니다.
 
-- 22 / SSH
-- 5000 / Flask
-- 3000 / Grafana
-- 9090 / Prometheus
+Health Check 주기는 10초이지만 복구 시간이 10초라고 보장할 수는 없습니다. MTTR 개선률이나 무중단 운영 수치를 측정했다고 주장하지 않습니다.
 
-This is intentionally documented as a limitation rather than presented as a secure production configuration.
+## 앞으로의 개선 방향
 
-A production design should limit administrative ports to trusted sources, avoid direct public exposure of internal monitoring services, and place services behind appropriate network boundaries or reverse proxies.
-
-## 4. Docker socket privilege
-
-The Auto-Healer mounts:
-
-```text
-/var/run/docker.sock
-```
-
-This provides powerful control over the host Docker daemon. A compromised healer container could potentially affect other containers or the host runtime.
-
-Production environments should prefer a more constrained orchestration or recovery mechanism with explicit authorization boundaries.
-
-## 5. Single-instance dependency
-
-The Flask application, Prometheus, Grafana, and Auto-Healer all depend on the same EC2 instance.
-
-Therefore container restart cannot recover failures such as:
-
-- EC2 instance failure
-- Availability Zone failure
-- host-level Docker failure
-- network failure
-
-Potential next steps include Auto Scaling Groups, ECS Services, Kubernetes, or multi-AZ architecture depending on the target operating model.
-
-## 6. Restart-based recovery
-
-The current recovery action is:
-
-```text
-docker restart web
-```
-
-This can recover some runtime failures, but it does not remove the root cause of repeated application logic errors, memory exhaustion, bad configuration, or external dependency failures.
-
-A more mature recovery policy would add:
-
-- retry limits
-- exponential backoff
-- failure classification
-- alert escalation
-- restart-loop detection
-
-## 7. Recovery timing
-
-The healer sleeps for 10 seconds between health checks. This means 10 seconds is the polling interval, not a measured or guaranteed recovery objective.
-
-This repository does not claim:
-
-- guaranteed recovery within 10 seconds
-- zero downtime
-- measured MTTR improvement
-- infrastructure-level self-healing
-
-## 8. Controlled failure injection
-
-The `/kill` endpoint changes an in-memory health flag so `/health` returns HTTP 500. It does not simulate every real production failure mode.
-
-Its purpose is to provide a repeatable, controlled validation path for the container-level recovery mechanism.
+장기 IAM 키를 OIDC로 교체하고, Security Group 접근을 제한하며, Docker CLI가 실제 포함된 Healer 실행 환경을 검증하는 것이 우선입니다. 이후 재시작 횟수 제한과 반복 장애 알림을 추가할 수 있습니다.
