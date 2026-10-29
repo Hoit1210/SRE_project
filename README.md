@@ -1,158 +1,122 @@
-# Project 04. Auto-Healing SRE System
+# Project 04. IaC 기반 Auto-Healing SRE Monitoring System
 
-IaC & Infrastructure Deployment Automation 기반 Auto-Healing SRE Monitoring System
+> **Terraform과 GitHub Actions로 AWS 인프라 배포를 자동화하고, Prometheus 모니터링 및 컨테이너 Health Check를 통해 장애 감지·재시작을 연결한 개인 프로젝트입니다.**
 
-> Terraform과 GitHub Actions로 AWS Infrastructure Provisioning을 자동화하고, Prometheus 기반 Health Signal과 Docker Auto-Healer를 연결하여 Failure Detection → Recovery Action을 구현한 SRE/DevOps 프로젝트입니다.
+## Project Context
+
+앞선 프로젝트에서는 클라우드 인프라 구축, 접근 통제, 장애 Context 분석과 대응 흐름을 구현했습니다. 그러나 인프라 생성과 애플리케이션 복구 과정에는 여전히 반복적인 수동 작업이 남아 있었습니다.
+
+이 프로젝트의 목표는 두 가지입니다.
+
+1. **배포 자동화:** Git Push → GitHub Actions → Terraform → AWS EC2
+2. **컨테이너 복구 자동화:** Health Check → 비정상 상태 감지 → Docker Restart
+
+> Auto-Healing 범위는 **단일 EC2 내 컨테이너 재시작 수준의 프로토타입**입니다. AWS 인프라 전체 장애를 자동 복구하는 플랫폼은 아닙니다.
 
 ## Architecture
 
-```text
-Git Push
-   ↓
-GitHub Actions
-   ↓
-Terraform
-   ↓
-AWS EC2 + Security Group
-   ↓
-EC2 user_data
-   ↓
-Docker Compose
-   ├─ Flask Web Application
-   ├─ Prometheus
-   ├─ Grafana
-   └─ Auto-Healer
-            ↓
-       GET /health
-            ↓
-      Failure Detection
-            ↓
-       docker restart web
+```mermaid
+flowchart TD
+    G[Git Push to main] --> A[GitHub Actions]
+    A --> T[Terraform]
+    T --> EC[EC2 + Security Group]
+    EC --> U[EC2 user_data / Docker Setup]
+    U --> D[Docker Compose]
+    D --> W[Flask Web Application]
+    D --> P[Prometheus]
+    D --> F[Grafana]
+    D --> H[Auto-Healer]
+    W -->|/metrics| P
+    P --> F
+    H -->|GET /health, 10초 간격| W
+    H -->|비정상 응답 시| R[docker restart web]
+    R --> W
 ```
 
-## What this project implements
+## Tech Stack
 
-- **Infrastructure as Code** — `main.tf` defines the AWS EC2 instance and Security Group.
-- **Infrastructure Deployment Automation** — pushes to `main` trigger GitHub Actions, which runs `terraform init` and `terraform apply -auto-approve`.
-- **Bootstrap Automation** — EC2 `user_data` installs Docker/Docker Compose, clones the repository, and starts the workload.
-- **Container Runtime** — Docker Compose runs the Flask app, Prometheus, Grafana, and Auto-Healer.
-- **Observability** — the Flask app exposes `/metrics`; Prometheus scrapes it every 5 seconds and Grafana visualizes the collected metrics.
-- **Health-based Recovery** — the Auto-Healer checks `/health` every 10 seconds and restarts the `web` container when the response is unhealthy.
-- **Controlled Failure Injection** — `/kill` switches the application into an unhealthy state so the recovery flow can be validated safely.
-
-## Repository structure
-
-```text
-SRE_project/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml
-├── docs/
-│   ├── architecture.md
-│   └── limitations.md
-├── app.py
-├── healer.py
-├── main.tf
-├── docker-compose.yml
-├── prometheus.yml
-├── Dockerfile
-├── .gitignore
-└── README.md
-```
-
-## Core flow
-
-### 1. Infrastructure deployment
-
-`main.tf` defines the AWS resources. GitHub Actions runs Terraform automatically after a push to `main`.
-
-```text
-Git Push → GitHub Actions → Terraform Apply → AWS EC2 / Security Group
-```
-
-### 2. Runtime bootstrap
-
-After EC2 creation, `user_data` prepares the Docker runtime and starts the Compose stack.
-
-```text
-EC2 Created → user_data → Docker Setup → docker-compose up -d --build
-```
-
-### 3. Observability
-
-The Flask application exposes Prometheus metrics at `/metrics`.
-
-```text
-Flask /metrics → Prometheus → Grafana
-```
-
-### 4. Auto-Healing
-
-The Auto-Healer polls `/health` every 10 seconds. A non-200 response triggers a container restart through the Docker socket.
-
-```text
-/health → Auto-Healer → Failure Detection → Docker Socket → Container Restart
-```
-
-The 10-second value is the **health-check interval**, not a guaranteed recovery time.
-
-### 5. Recovery validation
-
-The `/kill` endpoint intentionally changes the app into an unhealthy state. This is a controlled failure simulation used to validate the recovery pipeline; it is not a real production outage or attack.
-
-## Technology stack
-
-- AWS EC2
-- Terraform
-- GitHub Actions
-- Docker / Docker Compose
-- Python / Flask
-- Prometheus
-- Grafana
-
-## Design decisions
-
-| Problem | Decision | Reason |
+| 구분 | 기술 | 목적 |
 |---|---|---|
-| Manual AWS resource creation | Terraform | Manage infrastructure configuration as code |
-| Manual Terraform execution | GitHub Actions | Connect repository workflow with infrastructure deployment |
-| Manual EC2 setup | `user_data` | Automate instance bootstrap |
-| Multiple runtime services | Docker Compose | Manage application and monitoring services together |
-| Recovery decision signal | `/health` | Provide a simple, explicit health signal |
-| Metrics collection | Prometheus | Collect application metrics |
-| Metric visualization | Grafana | Inspect application behavior |
-| Manual restart | Python Auto-Healer | Connect failure detection to a recovery action |
+| Cloud | AWS EC2, Security Group | 애플리케이션 실행 인프라 |
+| IaC | Terraform | AWS 리소스 선언·생성 |
+| CI/CD | GitHub Actions | Push 이후 Terraform 실행 |
+| Bootstrap | EC2 user_data | Docker 설치 및 서비스 기동 |
+| Container | Docker, Docker Compose | 다중 서비스 실행 |
+| Application | Python, Flask | 서비스 및 Health/Metrics Endpoint |
+| Monitoring | Prometheus, Grafana | 애플리케이션 지표 수집·시각화 |
+| Recovery | Python Auto-Healer | 상태 검사 후 컨테이너 재시작 |
 
-## Scope and limitations
+## Core Engineering Decisions
 
-This repository demonstrates a **container-level Auto-Healing prototype**, not a production-grade self-healing infrastructure platform.
+| 문제 | 적용한 기술/방법 | 목적 |
+|---|---|---|
+| AWS 리소스 수동 생성 | Terraform | 인프라 구성을 코드로 관리 |
+| Terraform 명령 수동 실행 | GitHub Actions | Repository 변경과 배포 연결 |
+| EC2 초기 수동 설정 | user_data | 인스턴스 부팅 단계 자동화 |
+| 서비스 실행 및 관리 복잡성 | Docker Compose | 애플리케이션·모니터링 서비스 구성 |
+| 장애 발생 후 수동 재시작 | `/health` + Auto-Healer | 비정상 상태 인지 및 컨테이너 재시작 |
+| 애플리케이션 관측 부족 | `/metrics`, Prometheus, Grafana | 지표 수집 및 시각화 |
 
-Key limitations include:
+## Implementation & Validation
 
-- AWS authentication currently uses repository secrets with long-lived IAM access keys.
-- The current Security Group allows ports 22, 5000, 3000, and 9090 from `0.0.0.0/0`.
-- The Auto-Healer mounts `/var/run/docker.sock`, which grants powerful access to the host Docker daemon.
-- Application, monitoring, and recovery components depend on a single EC2 instance.
-- Recovery is based on container restart and does not address repeated application logic failures or infrastructure-level failures.
+### 1. Infrastructure as Code
+- `main.tf`에 EC2와 Security Group을 정의했습니다.
+- `main` 브랜치 Push를 트리거로 GitHub Actions가 `terraform init`, `terraform apply -auto-approve`를 실행합니다.
+- EC2 부팅 시 `user_data`가 Docker/Compose를 준비하고 저장소를 Clone한 뒤 컨테이너를 기동하도록 구성했습니다.
 
-See [docs/limitations.md](docs/limitations.md) for details.
+### 2. Monitoring
+- Flask 애플리케이션은 `/metrics`를 제공합니다.
+- Prometheus는 5초 간격으로 지표를 수집하고 Grafana에서 확인할 수 있도록 구성했습니다.
+
+### 3. Health-based Auto-Healing
+- Auto-Healer가 10초 간격으로 `/health` 상태를 확인합니다.
+- 응답이 비정상이면 Docker Socket을 이용해 `web` 컨테이너 재시작을 시도합니다.
+- **10초는 검사 주기이며, 실제 복구 완료 시간 또는 보장된 MTTR 수치가 아닙니다.**
+
+### 4. Controlled Failure Injection
+- `/kill` Endpoint를 이용해 애플리케이션의 Health 상태를 비정상으로 전환하는 모의 장애 흐름을 구성했습니다.
+- `/health`가 HTTP 500을 반환하도록 하여 장애 감지와 재시작 경로를 검증하도록 설계했습니다.
+- 실제 운영 장애나 광범위한 인프라 장애를 재현한 것은 아닙니다.
+
+## Repository Structure
+
+```text
+.github/workflows/deploy.yml  # GitHub Actions 배포
+main.tf                       # Terraform AWS 리소스
+app.py                        # Flask Web / Health / Metrics
+healer.py                     # 컨테이너 상태 확인·재시작
+Dockerfile                    # App 이미지
+docker-compose.yml            # 서비스 구성
+prometheus.yml                # 수집 설정
+docs/                         # 아키텍처·제약 사항
+README.md
+```
+
+## 주요 보안·운영상 한계
+
+| 항목 | 현재 상태 | 개선 방향 |
+|---|---|---|
+| AWS 인증 | GitHub Secrets의 장기 IAM Access Key 사용 | GitHub OIDC + IAM Role |
+| 인바운드 보안 | 22, 5000, 3000, 9090 포트를 `0.0.0.0/0`에 허용 | 신뢰 IP 제한, Monitoring 비공개 |
+| Docker Socket | Auto-Healer가 Docker Socket에 접근 | 권한 경계를 제한한 복구 방식 |
+| 장애 복구 범위 | 단일 EC2의 컨테이너 재시작 | ECS/ASG/Kubernetes 등 플랫폼 복구 |
+| 복구 정책 | 주기적 상태 확인 후 Restart | 재시도 한도, Backoff, 반복 장애 감지 |
+| 가용성 | 단일 인스턴스에 의존 | 다중 인스턴스·AZ 검토 |
+
+> 이 저장소의 현재 Security Group 및 인증 설정은 **실서비스 권장 설정이 아닙니다.** 별도 보안 강화 없이 공개 배포하지 마세요.
+
+상세 설명: [Limitations and Security Notes](docs/limitations.md)
+
+## Results & Scope
+
+- 이 저장소는 배포 자동화 및 컨테이너 수준 장애 복구 구조를 **구현·검증하기 위한 포트폴리오 프로토타입**입니다.
+- 장애 감지와 컨테이너 Restart 흐름을 다루지만 **무중단 운영, 10초 이내 복구 보장, MTTR 개선 수치, EC2 자체 장애 자동 복구**를 주장하지 않습니다.
+- 실제 장애 테스트 기록, Grafana 화면, Workflow 실행 캡처는 별도의 포트폴리오 자료를 참고하도록 분리했습니다.
 
 ## Portfolio
 
-Detailed engineering notes, screenshots, architecture evolution, and validation evidence are documented in Notion.
-
 [Project 04 Notion Portfolio](https://app.notion.com/p/3b059c94122580ca9c23f4efac60b2a7)
 
-## Engineering journey
+**Project 01 BUILD → Project 02 SECURE → Project 03 OBSERVE & RESPOND → Project 04 AUTOMATE**
 
-```text
-Project 01  BUILD
-     ↓
-Project 02  SECURE
-     ↓
-Project 03  OBSERVE
-     ↓
-Project 04  AUTOMATE
-```
-
-Project 04 focuses on coding and automating the infrastructure provisioning and recovery lifecycle that remained operationally manual in the previous stages.
+> GitHub는 코드·인프라 구성과 구현 근거, Notion은 설계 배경·검증 기록·개선점을 설명하는 역할로 사용합니다.
