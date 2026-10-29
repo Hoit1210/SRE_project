@@ -120,3 +120,24 @@ README.md
 **Project 01 BUILD → Project 02 SECURE → Project 03 OBSERVE & RESPOND → Project 04 AUTOMATE**
 
 > GitHub는 코드·인프라 구성과 구현 근거, Notion은 설계 배경·검증 기록·개선점을 설명하는 역할로 사용합니다.
+
+
+---
+
+## 실제 구축·검증 증거 (Notion 연계)
+
+**[개인 프로젝트 관리 — Project 04 Auto-Healing](https://app.notion.com/p/3b659c94122580cd81d6d0d249ebde89)**에 구축 과정과 장애 주입 전후 캡처가 보관되어 있습니다.
+
+| 구성 요소 | 노션의 실제 확인 기록 | 확인할 위치 |
+|---|---|---|
+| AWS 인프라 배포 | GitHub Actions의 Terraform Apply 결과 및 AWS 리소스 생성 | IaC & Infrastructure Deployment |
+| 모니터링 | Prometheus `http_requests_total` 조회, Grafana 시각화 | Observability |
+| 장애 주입 | `/kill` 실행으로 애플리케이션의 비정상 상태 생성 | Failure & Recovery Validation |
+| 자동 복구 | Auto-Healer 조치 이후 애플리케이션 정상 응답 | Failure & Recovery Validation |
+| 사후 상태 | 복구 이후 애플리케이션 요청 메트릭 변화 | Failure & Recovery Validation |
+
+### 클라우드 아키텍처 구성도 해석
+
+README 상단 다이어그램의 **GitHub Actions → Terraform → EC2/Security Group**는 클라우드 리소스 배포 경로입니다. **EC2 user_data → Docker Compose**는 인스턴스 부팅 이후 런타임 구성이며, **Prometheus/Grafana**는 메트릭 확인, **Auto-Healer/Docker Socket**은 컨테이너 재시작 경로입니다.
+
+각 단계는 역할이 다릅니다. 10초 주기는 Health Check 간격이지 복구 완료 시간이나 SLA가 아니며, 실제 테스트에서 확인한 것은 **컨테이너 수준 정상 응답 복원**입니다. 원본 캡처와 기록을 확인할 수 있도록 링크를 유지합니다.
