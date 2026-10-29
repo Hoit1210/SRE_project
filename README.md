@@ -1,6 +1,6 @@
 # Project 04. IaC 기반 Auto-Healing SRE Monitoring System
 
-> **Terraform과 GitHub Actions로 AWS 인프라 배포를 자동화하고, Prometheus 모니터링 및 컨테이너 Health Check를 통해 장애 감지·재시작을 연결한 개인 프로젝트입니다.**
+> Terraform과 GitHub Actions로 AWS 인프라 배포를 자동화하고, Prometheus 모니터링 및 컨테이너 Health Check를 통해 장애 감지·재시작을 연결한 개인 프로젝트입니다.
 
 ## Project Context
 
@@ -8,10 +8,10 @@
 
 이 프로젝트의 목표는 두 가지입니다.
 
-1. **배포 자동화:** Git Push → GitHub Actions → Terraform → AWS EC2
-2. **컨테이너 복구 자동화:** Health Check → 비정상 상태 감지 → Docker Restart
+1. 배포 자동화: Git Push → GitHub Actions → Terraform → AWS EC2
+2. 컨테이너 복구 자동화: Health Check → 비정상 상태 감지 → Docker Restart
 
-> Auto-Healing 범위는 **단일 EC2 내 컨테이너 재시작 수준의 프로토타입**입니다. AWS 인프라 전체 장애를 자동 복구하는 플랫폼은 아닙니다.
+> Auto-Healing 범위는 단일 EC2 내 컨테이너 재시작 수준의 프로토타입입니다. AWS 인프라 전체 장애를 자동 복구하는 플랫폼은 아닙니다.
 
 ## Architecture
 
@@ -32,6 +32,11 @@ flowchart TD
     H -->|비정상 응답 시| R[docker restart web]
     R --> W
 ```
+
+
+## 구성도
+
+[클라우드 구성도와 구성 요소 설명](docs/cloud-architecture.md)
 
 ## Tech Stack
 
@@ -71,7 +76,7 @@ flowchart TD
 ### 3. Health-based Auto-Healing
 - Auto-Healer가 10초 간격으로 `/health` 상태를 확인합니다.
 - 응답이 비정상이면 Docker Socket을 이용해 `web` 컨테이너 재시작을 시도합니다.
-- **10초는 검사 주기이며, 실제 복구 완료 시간 또는 보장된 MTTR 수치가 아닙니다.**
+- 10초는 검사 주기이며, 실제 복구 완료 시간 또는 보장된 MTTR 수치가 아닙니다.
 
 ### 4. Controlled Failure Injection
 - `/kill` Endpoint를 이용해 애플리케이션의 Health 상태를 비정상으로 전환하는 모의 장애 흐름을 구성했습니다.
@@ -103,30 +108,30 @@ README.md
 | 복구 정책 | 주기적 상태 확인 후 Restart | 재시도 한도, Backoff, 반복 장애 감지 |
 | 가용성 | 단일 인스턴스에 의존 | 다중 인스턴스·AZ 검토 |
 
-> 이 저장소의 현재 Security Group 및 인증 설정은 **실서비스 권장 설정이 아닙니다.** 별도 보안 강화 없이 공개 배포하지 마세요.
+> 이 저장소의 현재 Security Group 및 인증 설정은 실서비스 권장 설정이 아닙니다. 별도 보안 강화 없이 공개 배포하지 마세요.
 
 상세 설명: [Limitations and Security Notes](docs/limitations.md)
 
 ## Results & Scope
 
-- 이 저장소는 배포 자동화 및 컨테이너 수준 장애 복구 구조를 **구현·검증하기 위한 포트폴리오 프로토타입**입니다.
-- 장애 감지와 컨테이너 Restart 흐름을 다루지만 **무중단 운영, 10초 이내 복구 보장, MTTR 개선 수치, EC2 자체 장애 자동 복구**를 주장하지 않습니다.
+- 이 저장소는 배포 자동화 및 컨테이너 수준 장애 복구 구조를 구현·검증하기 위한 포트폴리오 프로토타입입니다.
+- 장애 감지와 컨테이너 Restart 흐름을 다루지만 무중단 운영, 10초 이내 복구 보장, MTTR 개선 수치, EC2 자체 장애 자동 복구를 주장하지 않습니다.
 - 실제 장애 테스트 기록, Grafana 화면, Workflow 실행 캡처는 별도의 포트폴리오 자료를 참고하도록 분리했습니다.
 
 ## Portfolio
 
 [Project 04 Notion Portfolio](https://app.notion.com/p/3b059c94122580ca9c23f4efac60b2a7)
 
-**Project 01 BUILD → Project 02 SECURE → Project 03 OBSERVE & RESPOND → Project 04 AUTOMATE**
+Project 01 BUILD → Project 02 SECURE → Project 03 OBSERVE & RESPOND → Project 04 AUTOMATE
 
 > GitHub는 코드·인프라 구성과 구현 근거, Notion은 설계 배경·검증 기록·개선점을 설명하는 역할로 사용합니다.
 
 
 ---
 
-## 실제 구축·검증 증거 (Notion 연계)
+## 구축 및 검증 기록
 
-**[개인 프로젝트 관리 — Project 04 Auto-Healing](https://app.notion.com/p/3b659c94122580cd81d6d0d249ebde89)**에 구축 과정과 장애 주입 전후 캡처가 보관되어 있습니다.
+[개인 프로젝트 관리 — Project 04 Auto-Healing](https://app.notion.com/p/3b659c94122580cd81d6d0d249ebde89)에 구축 과정과 장애 주입 전후 캡처가 보관되어 있습니다.
 
 | 구성 요소 | 노션의 실제 확인 기록 | 확인할 위치 |
 |---|---|---|
@@ -138,6 +143,6 @@ README.md
 
 ### 클라우드 아키텍처 구성도 해석
 
-README 상단 다이어그램의 **GitHub Actions → Terraform → EC2/Security Group**는 클라우드 리소스 배포 경로입니다. **EC2 user_data → Docker Compose**는 인스턴스 부팅 이후 런타임 구성이며, **Prometheus/Grafana**는 메트릭 확인, **Auto-Healer/Docker Socket**은 컨테이너 재시작 경로입니다.
+README 상단 다이어그램의 GitHub Actions → Terraform → EC2/Security Group는 클라우드 리소스 배포 경로입니다. EC2 user_data → Docker Compose는 인스턴스 부팅 이후 런타임 구성이며, Prometheus/Grafana는 메트릭 확인, Auto-Healer/Docker Socket은 컨테이너 재시작 경로입니다.
 
-각 단계는 역할이 다릅니다. 10초 주기는 Health Check 간격이지 복구 완료 시간이나 SLA가 아니며, 실제 테스트에서 확인한 것은 **컨테이너 수준 정상 응답 복원**입니다. 원본 캡처와 기록을 확인할 수 있도록 링크를 유지합니다.
+각 단계는 역할이 다릅니다. 10초 주기는 Health Check 간격이지 복구 완료 시간이나 SLA가 아니며, 실제 테스트에서 확인한 것은 컨테이너 수준 정상 응답 복원입니다. 원본 캡처와 기록을 확인할 수 있도록 링크를 유지합니다.
