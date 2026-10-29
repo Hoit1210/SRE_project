@@ -146,3 +146,5 @@ Project 01 BUILD → Project 02 SECURE → Project 03 OBSERVE & RESPOND → Proj
 README 상단 다이어그램의 GitHub Actions → Terraform → EC2/Security Group는 클라우드 리소스 배포 경로입니다. EC2 user_data → Docker Compose는 인스턴스 부팅 이후 런타임 구성이며, Prometheus/Grafana는 메트릭 확인, Auto-Healer/Docker Socket은 컨테이너 재시작 경로입니다.
 
 각 단계는 역할이 다릅니다. 10초 주기는 Health Check 간격이지 복구 완료 시간이나 SLA가 아니며, 실제 테스트에서 확인한 것은 컨테이너 수준 정상 응답 복원입니다. 원본 캡처와 기록을 확인할 수 있도록 링크를 유지합니다.
+
+[구축 및 검증 화면 목록](docs/evidence-gallery.md)
