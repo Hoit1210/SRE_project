@@ -38,6 +38,36 @@ flowchart TD
 
 [클라우드 구성도와 구성 요소 설명](docs/cloud-architecture.md)
 
+## 대표 검증 화면
+
+클라우드 인프라 구축과 운영 점검 과정에서 남긴 실제 실행 화면입니다. 공개용 캡처는 민감정보를 가렸으며, 설명은 화면에서 확인할 수 있는 범위로 작성했습니다.
+
+[전체 검증 화면 5개와 확인 범위](docs/evidence-gallery.md)
+
+### GitHub Actions 배포
+
+GitHub Actions 배포 작업 성공과 Terraform의 Resources: 2 added 결과를 확인했습니다. 리소스 식별자와 공인 IP는 가렸습니다.
+
+![GitHub Actions 배포](docs/images/01-terraform-deploy.png)
+
+### 장애 주입
+
+/kill 요청 후 애플리케이션이 장애 상태로 전환됐다는 응답입니다. 이 화면 자체는 HTTP 상태 코드나 복구 완료를 보여 주지 않습니다.
+
+![장애 주입](docs/images/03-failure-test.png)
+
+### 복구 후 응답
+
+장애 주입 이후 애플리케이션이 Hello, SRE World!를 반환한 화면입니다. 두 캡처만으로 자동 재시작의 실행 로그나 정확한 복구 시간을 확인할 수는 없습니다.
+
+![복구 후 응답](docs/images/04-recovery-response.png)
+
+### 복구 이후 모니터링
+
+복구 이후 Grafana에서 요청 카운터 변화가 표시됩니다. 복구 시간 보장이나 무중단 운영을 의미하지 않습니다.
+
+![복구 이후 모니터링](docs/images/05-grafana-after-recovery.png)
+
 ## Tech Stack
 
 | 구분 | 기술 | 목적 |
@@ -116,7 +146,7 @@ README.md
 
 - 이 저장소는 배포 자동화 및 컨테이너 수준 장애 복구 구조를 구현·검증하기 위한 포트폴리오 프로토타입입니다.
 - 장애 감지와 컨테이너 Restart 흐름을 다루지만 무중단 운영, 10초 이내 복구 보장, MTTR 개선 수치, EC2 자체 장애 자동 복구를 주장하지 않습니다.
-- 실제 장애 테스트 기록, Grafana 화면, Workflow 실행 캡처는 별도의 포트폴리오 자료를 참고하도록 분리했습니다.
+- 실제 장애 테스트 기록, Grafana 화면, Workflow 실행 캡처는 아래 대표 검증 화면과 전체 갤러리에서 확인할 수 있습니다.
 
 ## Portfolio
 
@@ -148,3 +178,4 @@ README 상단 다이어그램의 GitHub Actions → Terraform → EC2/Security G
 각 단계는 역할이 다릅니다. 10초 주기는 Health Check 간격이지 복구 완료 시간이나 SLA가 아니며, 실제 테스트에서 확인한 것은 컨테이너 수준 정상 응답 복원입니다. 원본 캡처와 기록을 확인할 수 있도록 링크를 유지합니다.
 
 [구축 및 검증 화면 목록](docs/evidence-gallery.md)
+
